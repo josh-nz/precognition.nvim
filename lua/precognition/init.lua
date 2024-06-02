@@ -24,7 +24,7 @@ local M = {}
 ---@class Precognition.Config
 ---@field startVisible boolean
 ---@field showBlankVirtLine boolean
----@field virtLineAbove boolean
+---@field virtLinePosition string
 ---@field highlightColor vim.api.keyset.highlight
 ---@field hints Precognition.HintConfig
 ---@field gutterHints Precognition.GutterHintConfig
@@ -32,7 +32,7 @@ local M = {}
 ---@class Precognition.PartialConfig
 ---@field startVisible? boolean
 ---@field showBlankVirtLine? boolean
----@field virtLineAbove? boolean
+---@field virtLinePosition? string
 ---@field highlightColor? vim.api.keyset.highlight
 ---@field hints? Precognition.HintConfig
 ---@field gutterHints? Precognition.GutterHintConfig
@@ -74,7 +74,7 @@ local defaultHintConfig = {
 local default = {
     startVisible = true,
     showBlankVirtLine = true,
-    virtLineAbove = false,
+    virtLinePosition = "below",
     highlightColor = { link = "Comment" },
     hints = defaultHintConfig,
     gutterHints = {
@@ -105,6 +105,17 @@ local au = vim.api.nvim_create_augroup("precognition", { clear = true })
 local ns = vim.api.nvim_create_namespace("precognition")
 ---@type string
 local gutter_group = "precognition_gutter"
+
+---@enum Precognition.VirtualLinePosition
+local virtual_line_position = {
+    Above = 0,
+    Below = 1,
+}
+--@type interger?
+local previous_line_number
+
+--@type Precognition.VirtualLinePosition?
+local previous_virtual_line_position
 
 ---@param marks Precognition.VirtLine
 ---@param line_len integer
@@ -222,6 +233,38 @@ local function apply_gutter_hints(gutter_hints, bufnr)
     end
 end
 
+---@param cursorline integer
+---@return Precognition.VirtualLinePosition
+local function resolve_virt_line_position(cursorline)
+    local cfg = string.lower(config.virtLinePosition)
+    if (cfg == "dynamic" or cfg == "dynamic-inverted") and previous_line_number then
+        local line_diff = 0
+        if cfg == "dynamic" then
+            line_diff = previous_line_number - cursorline
+        elseif cfg == "dynamic-inverted" then
+            line_diff = cursorline - previous_line_number
+        end
+
+        if line_diff > 0 then
+            previous_virtual_line_position = virtual_line_position.Above
+        elseif line_diff < 0 then
+            previous_virtual_line_position = virtual_line_position.Below
+        end
+
+        previous_line_number = cursorline
+        return previous_virtual_line_position or virtual_line_position.Below
+    end
+
+    if cfg == "above" then
+        return virtual_line_position.Above
+    elseif cfg == "below" then
+        return virtual_line_position.Below
+    end
+
+    -- Default when invalid config value specified.
+    return virtual_line_position.Below
+end
+
 local function display_marks()
     local bufnr = vim.api.nvim_get_current_buf()
     if require("precognition.utils").is_blacklisted_buffer(bufnr) then
@@ -270,19 +313,20 @@ local function display_marks()
 
     -- TODO: can we add indent lines to the virt line to match indent-blankline or similar (if installed)?
 
+    local vl_above = resolve_virt_line_position(cursorline) == virtual_line_position.Above
     -- create (or overwrite) the extmark
     if config.showBlankVirtLine or (virt_line and #virt_line > 0) then
         extmark = vim.api.nvim_buf_set_extmark(0, ns, cursorline - 1, 0, {
             id = extmark, -- reuse the same extmark if it exists
             virt_lines = { virt_line },
-            virt_lines_above = config.virtLineAbove,
+            virt_lines_above = vl_above,
         })
         -- https://github.com/neovim/neovim/issues/16166
         -- If on line 1 with the virtual line set to above, you won't see
         -- the virtual line unless you scroll with <C-y>. The following call
         -- adjusts the view so you can see the virtual line correctly.
         -- Doesn't seem to work with `gg` however.
-        if cursorline == 1 and config.virtLineAbove then
+        if cursorline == 1 and vl_above then
             vim.fn.winrestview({ topfill = 1 })
         end
     end
@@ -377,6 +421,7 @@ function M.show()
         return
     end
     visible = true
+    previous_line_number = vim.fn.line(".")
 
     -- clear the extmark entirely when leaving a buffer (hints should only show in current buffer)
     vim.api.nvim_create_autocmd("BufLeave", {

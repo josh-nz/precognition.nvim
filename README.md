@@ -21,7 +21,7 @@ return {
     opts = {
     -- startVisible = true,
     -- showBlankVirtLine = true,
-    -- virtLineAbove = false,
+    -- virtLinePosition = "below",
     -- highlightColor = { link = "Comment" },
     -- hints = {
     --      Caret = { text = "^", prio = 2 },
@@ -53,9 +53,12 @@ return {
 - `showBlankVirtLine = false`
   Setting this option will mean that if a Virtual Line would be blank it won't be
   rendered
-- `virtLineAbove = false`
-  When set to true, show the virtual line above the current line. Otherwise the
-  virtual line will be below the current line.
+- `virtLinePosition` can be one of the following strings:
+    1. "above" - shows the virtual line above the current line
+    2. "below" - shows the virtual line below the current line
+    3. "dynamic" - the virtual line will display below the current line when moving down and above the current line when moving up
+    4. "dynamic-inverted" - the virtual line will display above the current line when moving down and below the current line when moving up
+     depending on the last cursor movement direction
 - `gutterHints` can be hidden by setting their priority to 0.
 - `highlightColor` can be set in two ways:
 
