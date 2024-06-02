@@ -24,6 +24,7 @@ local M = {}
 ---@class Precognition.Config
 ---@field startVisible boolean
 ---@field showBlankVirtLine boolean
+---@field virtLineAbove boolean
 ---@field highlightColor vim.api.keyset.highlight
 ---@field hints Precognition.HintConfig
 ---@field gutterHints Precognition.GutterHintConfig
@@ -31,6 +32,7 @@ local M = {}
 ---@class Precognition.PartialConfig
 ---@field startVisible? boolean
 ---@field showBlankVirtLine? boolean
+---@field virtLineAbove? boolean
 ---@field highlightColor? vim.api.keyset.highlight
 ---@field hints? Precognition.HintConfig
 ---@field gutterHints? Precognition.GutterHintConfig
@@ -72,6 +74,7 @@ local defaultHintConfig = {
 local default = {
     startVisible = true,
     showBlankVirtLine = true,
+    virtLineAbove = false,
     highlightColor = { link = "Comment" },
     hints = defaultHintConfig,
     gutterHints = {
@@ -272,7 +275,16 @@ local function display_marks()
         extmark = vim.api.nvim_buf_set_extmark(0, ns, cursorline - 1, 0, {
             id = extmark, -- reuse the same extmark if it exists
             virt_lines = { virt_line },
+            virt_lines_above = config.virtLineAbove,
         })
+        -- https://github.com/neovim/neovim/issues/16166
+        -- If on line 1 with the virtual line set to above, you won't see
+        -- the virtual line unless you scroll with <C-y>. The following call
+        -- adjusts the view so you can see the virtual line correctly.
+        -- Doesn't seem to work with `gg` however.
+        if cursorline == 1 and config.virtLineAbove then
+            vim.fn.winrestview({ topfill = 1 })
+        end
     end
     apply_gutter_hints(build_gutter_hints())
 

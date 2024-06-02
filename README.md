@@ -21,6 +21,7 @@ return {
     opts = {
     -- startVisible = true,
     -- showBlankVirtLine = true,
+    -- virtLineAbove = false,
     -- highlightColor = { link = "Comment" },
     -- hints = {
     --      Caret = { text = "^", prio = 2 },
@@ -52,6 +53,9 @@ return {
 - `showBlankVirtLine = false`
   Setting this option will mean that if a Virtual Line would be blank it won't be
   rendered
+- `virtLineAbove = false`
+  When set to true, show the virtual line above the current line. Otherwise the
+  virtual line will be below the current line.
 - `gutterHints` can be hidden by setting their priority to 0.
 - `highlightColor` can be set in two ways:
 
